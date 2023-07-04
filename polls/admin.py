@@ -1,3 +1,9 @@
 from django.contrib import admin
 
-# Register your models here.
+# quiestionモデルをインポート
+from .models import Question
+
+# モデルをadmin管理画面に登録
+admin.site.register(Question)
+
+
