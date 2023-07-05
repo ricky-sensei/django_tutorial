@@ -175,6 +175,80 @@ pub_date__yearをつかって、今年投稿されたものを表示してみま
 <br />
 ---
 ここからはちょっとだけSQLの知識が有るとわかりやすいです。「SQLなんて全く触ったことないぜ！」ていう方は、youtubeとかでSQL講座みたいなのをチラ見しておくといいかも！  
-先程の
+    
+データベースでは主キー(=プライマリキー)というのがあります。データベースのレコードを識別するための、重複しないデータが入ったカラムのことです。
+たとえば、社員氏名と部署名、社員番号が書かれたテーブルがあるとします。このうち、絶対に重複しないのは社員番号ですよね。同姓同名のひとがいるかもしれませんし。この場合、社員番号が主キーとなります。  
+今回の場合は、自動生成されるIDが主キーとなっていますが、常にID=主キーとは限らないので、注意が必要です。  
+以下のコードを打ってみましょう。引数のpkはペナルティーキック、ではなくPrimary Keyの略です。  
+```python
+>>> Question.objects.get(pk=1) 
+<Question: 新着情報>
+```  
+では、いままでQuestionモデルしか操作してこなかったので、Choiceモデルにもデータを挿入していきましょう。  
+質問に対する選択肢(Choice)を作成しているので、先程pk=1と指定して出力された質問に対し、その質問に対する複数の選択肢を用意していきます。  
+まず、先程出力された内容("新着情報")を、変数に格納します。  
+```python
+q = Question.objects.get(pk=1)
+```  
+ここで、これから作る予定の choice_set というオブジェクトの中身を表示してみます。何を言っているか分からねえと思うが、おれも何をしているのかわからねえ！だってオブジェクトがないんだから！(あ、ちなみにポルナレフでした)  
+```python
+q.choice_set.all()
+# <QuerySet []>
+```  
+エラーじゃなくて、[]が返ってくるのがミソです。  
+  
+ここで、models.pyを見返してみましょう。Choiceモデルはどんな感じになってたでしょうか。  
+```python:models.py
+class Choice(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    choice_text = models.CharField(max_length=200)
+    votes = models.IntegerField(default=0)
+    def __str__(self):
+        return self.choice_text
+```  
+プロパティを見てみると  
+・question: Questionモデルの外部キー
+・choice_text: 文字列
+・votes: 整数  
+となっています。
+  
+では、choice_setオブジェクトの中身をつくっていきましょう。今回は選択肢を作るので、Choiceモデルのquestion, choice_text, モデルのなかみを作るには、SQLを発行する必要があり、カラムを作成するにはcreate文を発行します。Djangoでcreate文はこのようにして書くことができます。   
+```python
+q.choice_set.create(choice_text="まあまあ", votes=0) 
+q.choice_set.create(choice_text="サイコー", votes=0) 
+q.choice_set.create(choice_text="ハックしてるぜ", votes=0)
+```  
+※チュートリアルその1では質問が「what's new(最新情報)」となっていたのが、その2では「what's up(元気？)」になってます。しかも、choiceのふたつめで,whats upにたいして "the sky"とかっていうアメリカンジョークをいれてます。まったく、こういうわかりにくいことやめてほしいもんです。  
+それはいいとして、3つの選択肢が入ったので、早速表示してみましょう。  
+```python
+>>> q.choice_set.all()
+<QuerySet [<Choice: まあまあ>, <Choice: サイコー>, <Choice: ハックしてるぜ>]>
+>>> q.choice_set.count()
+3
+```  
+DjangoのAPIは自動的にリレーションに従ってくれます。そして、引数にダブルアンダースコア(__)をつけて各モデルのプロパティやメソッドにアクセスできるので、こんなこともできます。  
+```python
+# 今年投稿されたものだけフィルタリング  
+>>> Choice.objects.filter(question__pub_date__year=current_year)  
 
+# 「ハック」ではじまるchoice_textを削除
+>>> c = q.choice_set.filter(choice_text__startswith="ハック")
+>>> c
+<QuerySet [<Choice: ハックしてるぜ>]>
+>>> c.delete()
+(1, {'polls.Choice': 1})
+>>> q.choice_set.all()  
+<QuerySet [<Choice: まあまあ>, <Choice: サイコー>]>
 
+```  
+
+# 管理画面を確認してみよう  
+せっかくデータも用意できたので、管理画面で確認してみましょう.  
+※せっかくなので、質問文を「元気？」と変えておきます。
+
+![img_4.png](images%2Fimg_4.png)  
+
+  
+---  
+今回はここまで。次はチュートリアルその3に入ります。  
+ではでは！
