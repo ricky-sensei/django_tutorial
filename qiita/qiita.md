@@ -235,6 +235,20 @@ COMMIT;
 ```
 
 では、実際にマイグレーションを実行しましょう。  
-```
-python manage.py migrate
+```python
+# 追加
+from django.shortcut import render, get_object_or404
+from django.http import Http404
+
+def detail(request, question_id):
+    try:
+        question = Question.objects.get(pk=question_id)
+    except Question.DoesNotExist:
+        raise Http404("Question does not exist")
+    return render(request, "polls/detail.html", {"question":question})
+
+```  
+先程のindexテンプレートのように、polls/templates/polls/に detai.htmlを追加しましょう。  
+```html
+
 ```

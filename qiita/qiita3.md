@@ -65,5 +65,72 @@ def index(request):
 ```  
 このコード、うまくいってはいると思いますが、一つ問題があります。  
 本来views.pyは、ページの見栄えを変えるものではないのですが、今のままでは、例えばページのデザインを一新するときに、pythonコードを書き直さなくてはいけません。データの出し入れと表示の部分をそれぞれ分離したほうが良さそうです。  
-pollsでぃれくとりにtemplatesというディレクトリを作成しましょう。djangoはここからテンプレートとなるhtmlファイルを探します。
-・
+pollsディレクトリにtemplatesというディレクトリを作成しましょう。djangoはここからテンプレートとなるhtmlファイルを探します。この中に入っているhtmlファイルが、見た目を構成するテンプレートファイルになります。    
+ここで一つ注意しなくては行けないのは、polls/templates/index.html ではなく、polls/templates/polls/index.html  となることです。どうやら、同じ名前のテンプレートが別アプリにあったときなど、名前の混同を防ぐためだとか。  
+では上述のようにディレクトリを作成し、テンプレートファイルを書いていきましょう。  
+# テンプレートファイル  
+こんな感じです。HTMLの中にpythonが埋め込まれているような見た目をしています
+```html:polls/templates/polls/index.html
+<!DOCTYPE html>
+<html lang=ja>
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    {% if latest_question_list %}
+        <ul>
+            {% for question in latest_question_list %}
+            <li><a href="/polls/{{ question.id }}/">{{ question.question_text }}</a></li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No polls are available</p>
+    {% endif %} 
+</body>
+</html>
+```   
+pythonの文を書くときは {% %}で囲います。for文やif文の終わりにそれぞれendfor endifという語句がついていますね。  
+変数のみを挿入する場合, {{ }}のように二重中括弧でくくります。question.idをURLに加えていますね。  
+  
+index.htmlくんはまだこのquestion.idが何者か知りません。なので、views.pyから、contextという辞書型のカンペを渡してあげましょう。  
+  
+```python
+# 前略
+def index(request):
+    # データを用意
+    latest_question_list = Question.objects.order_by("-pub_date")[:5]
+    # テンプレートをロード
+    template = loader.get_template("polls/index.html")
+    # カンペを作成して渡す
+    context = {'latest_question_list':latest_question_list}
+    return HttpResponse(template.render(context, request))
+# 後略
+```  
+# render()関数  
+個々のコードでやっていることは、テンプレートをロードして、コンテキストにデータをいれてviewにわたす、という、djangoではめちゃくちゃ使う動きです。優しいdjango先輩は簡潔に書くためのショートカットを用意してくれています。せかっくなので使ってあげましょう。  
+
+```python
+from django.shortcut import render
+# 中略
+def index(request):
+    latest_question_list = Question.objects.order_by("-pub_date")[:5]
+    # ショートカットを利用
+    context = {'latest_question_list':latest_question_list}
+    return render(request, "polls/index.html")
+```  
+index以外のページはとりあえずこのままで行くので、
+```python
+from Django.urils import HttpResponse
+```
+は残しておきます。  
+
+
+# 404 link is dead  
+![img_1.png](images%2Fimg_1.png)
+  
+detailのページを編集しましょう。ここは質問のビューを表示するためのものです。ユーザーが正しくurlを打ってくれればいいのですが、かならずそうしてくれるとも限りません。間違ったquestion_idを入力された場合にしっかりとエラーを返して上げましょう、いきなりdjangoのエラーページが出てもユーザーさん困っちゃいますもんね。views.pyを編集していきましょう。  
+python初心者の場合はまだあまり馴染みが無いかもしれない try exceptの例外処理を使っています。
+```python:polls/views.py
+
+```
