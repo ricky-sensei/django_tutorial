@@ -117,7 +117,7 @@ def index(request):
     latest_question_list = Question.objects.order_by("-pub_date")[:5]
     # ショートカットを利用
     context = {'latest_question_list':latest_question_list}
-    return render(request, "polls/index.html")
+    return render(request, "polls/index.html", context)
 ```  
 index以外のページはとりあえずこのままで行くので、
 ```python
@@ -132,5 +132,95 @@ from Django.urils import HttpResponse
 detailのページを編集しましょう。ここは質問のビューを表示するためのものです。ユーザーが正しくurlを打ってくれればいいのですが、かならずそうしてくれるとも限りません。間違ったquestion_idを入力された場合にしっかりとエラーを返して上げましょう、いきなりdjangoのエラーページが出てもユーザーさん困っちゃいますもんね。views.pyを編集していきましょう。  
 python初心者の場合はまだあまり馴染みが無いかもしれない try exceptの例外処理を使っています。
 ```python:polls/views.py
+def detail(request, question_id):
+    try:
+        question = Question.objects.get(pk=question_id)
+    except Question.DoesNotExist:
+        raise Http404("Question does not exist")
+    return render(request, "polls/detail.html", {"question":question})
+```  
 
+おそらく、このポエムを読んで頂いている方はウェブアプリ作成が初めてな方が多いと思うので、「404」とは？ってなる方もいなくはないと思います。HTTPステータスコードというのですが、ウェブサイトを見ているとたまに404などの数字がでてくると思います、これはその見ているサイトのいかがわしさを表す数字ではなく、ウェブサイトにリクエストを送った結果を表しています。  
+リクエストされたURLが存在しない、あるいは指定の仕方が間違っていたときに、「え、誰？」って感じで返されるコードです。  
+HTTPステータスコードについては、漫画でめちゃくちゃわかりやすく説明されている本があり、めちゃくちゃオススメです。
+
+https://llminatoll.booth.pm/items/1036373
+
+  
+この404エラーに対しても、django先輩がniceでcoolなショートカットを用意してくれています。  
+  
+```python:views.py
+# (get_object_or_404を追加)
+from django.shortcuts import get_object_or_404, render
+
+def detail(request, question_id):
+    try:
+        question = Question.objects.get(pk=question_id)
+    except Question.DoesNotExist:
+        raise Http404("Question does not exist")
+    return render(request, "polls/detail.html", {"question":question})
+
+```  
+# テンプレートを使う  
+detailのビューに戻って、テンプレートを使って、質問文に対する選択肢を書き出してみましょう。
+```python
+<h1>{{ question.question_text }}</h1>
+<ul>
+{% for choice in question.choice_set.all %}
+    <li>{{ choice.choice_text }}</li>
+{% endfor %}
+</ul>
+```  
+for文のところをちょっと見てみましょう。ほとんどpythonコードと同じですがquestion.choice_set.all()と本来するところallのカッコがありません。pythonコードとtenplateのちょっとした違いがありそうですが、まずはdjangoの構造を理解することを優先していいかなと思うので、ここでは飛ばします。気になる方はテンプレートガイドなどをみて見るといいかなと思います
+。  
+# URLを柔軟にする
+チュートリアル先輩は、どうやらtemplates/polls/index.htmlの書き方に激おこな様子。「ハードコード」されているのが良くないようで。  
+ハードコードとは、柔軟性のない、変更がめんどくさい感じの書き方のことで、すごく雑に説明すると以下のようなコードです  
+```python
+print("今日の天気は晴れです")
 ```
+これをソフトコードにしてみましょう  
+```python
+weather = "晴れ"
+print("今日の天気は"+ weather)
+```
+こうすることで、あとでやっぱり雨だったら、weatherを変更すればいいだけで、簡単に変更できるようになりますね。  
+index.htmlを確認してみると
+```html
+<li><a href="/polls/{{ question.id }}/">{{ question.question_text }}</a></li>
+```  
+となっています。ここのページで質問をクリックすると,polls/{{question_id}}のページ、つまりdetailに飛べるように<a>タグが貼られていますが、ココをソフトコードにしていきましょう。 
+```html
+<li><a href="{% url 'detail' question.id %}">{{ question.question_text }}</a></li>
+```
+url ～ とかくだけで、なぜここのurlが/polls/{{ question.id }}/ だってわかるんでしょうか。秘密はurl.pyの中にあります。見てみましょう  
+```python
+path("<int:question_id>/", views.detail, name="detail"),
+```  
+path関数の最後のname引数で、テンプレートの{% url %}タグで使える名前を設定していたんですね。これで、たとえばdetailページの指定の仕方を変更したいときは、このpath関数のみを変更すればよくなりましたね。  
+  
+  
+# アプリが複数あるときは  
+今回のプロジェクトはpollsアプリだけですが、実際に制作するプロジェクトではもしかしたら2個3個、10個20個のアプリを作成するかもしれません。その場合、例えば先程のように{%url%}タグで、どのビューに対して、どのURLを作成すればいいか。それを解決する方法があります。  
+先程はdetailという名前をurlpatternsから探していましたが、「pollsアプリの」detailを探したい！ということですね。  
+やりかたは簡単。まずはurl.pyに、app_name変数を加えましょう。  
+```python:urls.py
+ # (ココを追加)
+app_name = "polls"
+
+urlpatterns = [
+    path("", views.index, name="index"),
+    path("<int:question_id>/", views.detail, name="detail"),
+    path("<int:question_id>/result/", views.result, name="result"),
+    path("<int:question_id>/vote/", views.vote, name="vote"),
+]
+```  
+そして、index.htmlで、 「detail」とだけ指定していたところを、「polls:detail」に変更します。  
+```html
+<li><a href="{% url 'polls:detail' question.id %}">{{ question.question_text }}</a></li>
+```  
+
+このようにして、django先輩は、大規模なウェブサイトを作るのに大変便利な機能を持っています。先輩かっこいい！  
+
+ということで、チュートリアル3の内容でした。だんだん複雑になってきて、django先輩の言ってることもよく分からなくなってきたと思いますが、なるべくわかりやすく言い換えて書いていきますので、よろしくお願いします。  
+では、その④に続きます。
