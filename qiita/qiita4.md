@@ -36,9 +36,41 @@ formタグのmethodプロパティを見てみましょう。
 
 これを踏まえた上で、detail.htmlを編集していきましょう。  
 ```html:polls/templates/polls/detail.html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+    <form action="{% url 'polls:vote' question.id %}" method="post">
+        <fieldset>
+            <legend><h1>{{ question.question_text }}</h1></legend>
+            {% if error_message %}
+                <p><strong>{{ error_message }}</strong></p>
+            {% endif %}
 
+            {% for choice in question.choice_set.all %}
+                <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}">
+                <label for="choice{{ forloop.counter }}">{{ choice.choice_text }}</label> <br>
+            {% endfor %}
+        </fieldset>
+        <input type="submit" value="投票">
+    </form>
+</html>
 ```
-
+  
+この中で、初心者敵にあまり見かけないタグは、legendタグくらいでしょうか。lengendタグは伝説のタグ、ではなく、各fieldsetに対しての説明文を入れたりするタグです。  
+  
+pythonライクな書き方とhtmlが混在しているようなカタチで、最初は分かりずらいかもしれませんが、大体何が書いてあるか分かりますでしょうか。  
+error_messageというパラメータを確認し。それがtrueならエラー文を表示、そうでなければfor文を用いて選択肢を表示します。  
+urls.pyで、vote関数がこうなっていましたね。name=voteとしているから、{% url vote %}で指定できることを思い出してください。（前回参照）
+  
+```python:urls.py
+path("<int:question_id>/vote/", views.vote, name="vote"),
+```  
+views.pyののviews関数を編集しましょう。  
+ついでに。get_object_or_404やrenderのショートカットを使いましょう。れっつリファクタリング。  
+  
 
 
 
